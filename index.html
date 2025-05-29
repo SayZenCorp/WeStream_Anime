@@ -86,7 +86,7 @@
       font-weight: bold;
     }
 
-    button.remove-btn {
+    button.remove-btn, button.edit-btn {
       background: #e74c3c;
       border: none;
       color: white;
@@ -94,10 +94,21 @@
       font-size: 0.9rem;
       border-radius: 4px;
       cursor: pointer;
+      margin-left: 6px;
+      user-select: none;
     }
 
     button.remove-btn:hover {
       background: #c0392b;
+    }
+
+    button.edit-btn {
+      background: #2980b9;
+      padding: 3px 6px;
+    }
+
+    button.edit-btn:hover {
+      background: #1c5980;
     }
 
     main {
@@ -263,18 +274,56 @@
     if (data) animes = JSON.parse(data);
   }
 
+  // Fonction pour créer un bouton éditer (✏️)
+  function createEditButton() {
+    const btn = document.createElement('button');
+    btn.className = 'edit-btn';
+    btn.title = "Renommer";
+    btn.textContent = '✏️';
+    btn.type = 'button';
+    return btn;
+  }
+
   function renderAnimeList() {
     animeListEl.innerHTML = '';
 
     animes.forEach((anime, aIdx) => {
       const animeLi = document.createElement('li');
       animeLi.className = 'anime' + (aIdx === selectedAnimeIndex ? ' active' : '');
-      animeLi.textContent = anime.title;
+      animeLi.style.userSelect = 'none';
 
+      // Conteneur texte (titre ou input)
+      const textContainer = document.createElement('span');
+      textContainer.textContent = anime.title;
+      textContainer.style.flexGrow = '1';
+      animeLi.appendChild(textContainer);
+
+      // Bouton éditer anime
+      const editBtn = createEditButton();
+      animeLi.appendChild(editBtn);
+
+      // Bouton supprimer anime
       const removeAnimeBtn = document.createElement('button');
       removeAnimeBtn.className = 'remove-btn';
       removeAnimeBtn.textContent = 'X';
       removeAnimeBtn.title = "Supprimer cet anime";
+      animeLi.appendChild(removeAnimeBtn);
+
+      // Click sur anime pour sélectionner
+      animeLi.addEventListener('click', (e) => {
+        // Ne déclenche pas si on clique sur les boutons (edit ou remove)
+        if (e.target === editBtn || e.target === removeAnimeBtn) return;
+        selectedAnimeIndex = aIdx;
+        selectedSeasonIndex = null;
+        selectedEpisodeIndex = null;
+        animeTitleEl.textContent = `Anime: ${anime.title} — Sélectionne une saison`;
+        episodeListEl.innerHTML = '';
+        videoPlayer.src = '';
+        renderAnimeList();
+        updateFormsVisibility();
+      });
+
+      // Supprimer anime
       removeAnimeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         if (confirm(`Supprimer "${anime.title}" ?`)) {
@@ -288,17 +337,11 @@
           updateFormsVisibility();
         }
       });
-      animeLi.appendChild(removeAnimeBtn);
 
-      animeLi.addEventListener('click', () => {
-        selectedAnimeIndex = aIdx;
-        selectedSeasonIndex = null;
-        selectedEpisodeIndex = null;
-        animeTitleEl.textContent = `Anime: ${anime.title} — Sélectionne une saison`;
-        episodeListEl.innerHTML = '';
-        videoPlayer.src = '';
-        renderAnimeList();
-        updateFormsVisibility();
+      // Renommer anime
+      editBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        startEditing(animeLi, textContainer, 'anime', aIdx);
       });
 
       // Saisons
@@ -308,12 +351,40 @@
         anime.seasons.forEach((season, sIdx) => {
           const seasonLi = document.createElement('li');
           seasonLi.className = 'season' + (aIdx === selectedAnimeIndex && sIdx === selectedSeasonIndex ? ' active' : '');
-          seasonLi.textContent = "Saison " + season.seasonNum;
+          seasonLi.style.userSelect = 'none';
 
+          // Conteneur texte saison
+          const seasonText = document.createElement('span');
+          seasonText.textContent = "Saison " + season.seasonNum;
+          seasonText.style.flexGrow = '1';
+          seasonLi.appendChild(seasonText);
+
+          // Bouton éditer saison
+          const editSeasonBtn = createEditButton();
+          seasonLi.appendChild(editSeasonBtn);
+
+          // Bouton supprimer saison
           const removeSeasonBtn = document.createElement('button');
           removeSeasonBtn.className = 'remove-btn';
           removeSeasonBtn.textContent = 'X';
           removeSeasonBtn.title = "Supprimer cette saison";
+          seasonLi.appendChild(removeSeasonBtn);
+
+          // Click saison sélection
+          seasonLi.addEventListener('click', (e) => {
+            if (e.target === editSeasonBtn || e.target === removeSeasonBtn) return;
+            e.stopPropagation();
+            selectedAnimeIndex = aIdx;
+            selectedSeasonIndex = sIdx;
+            selectedEpisodeIndex = null;
+            animeTitleEl.textContent = `${anime.title} — Saison ${season.seasonNum}`;
+            renderEpisodes(aIdx, sIdx);
+            videoPlayer.src = '';
+            renderAnimeList();
+            updateFormsVisibility();
+          });
+
+          // Supprimer saison
           removeSeasonBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             if (confirm(`Supprimer la saison ${season.seasonNum} ?`)) {
@@ -326,18 +397,11 @@
               updateFormsVisibility();
             }
           });
-          seasonLi.appendChild(removeSeasonBtn);
 
-          seasonLi.addEventListener('click', (e) => {
-            e.stopPropagation(); // Empêche la propagation au li anime
-            selectedAnimeIndex = aIdx;
-            selectedSeasonIndex = sIdx;
-            selectedEpisodeIndex = null;
-            animeTitleEl.textContent = `${anime.title} — Saison ${season.seasonNum}`;
-            renderEpisodes(aIdx, sIdx);
-            videoPlayer.src = '';
-            renderAnimeList();
-            updateFormsVisibility();
+          // Renommer saison (changer son numéro)
+          editSeasonBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            startEditing(seasonLi, seasonText, 'season', aIdx, sIdx);
           });
 
           // Episodes sous la saison sélectionnée
@@ -347,14 +411,37 @@
               season.episodes.forEach((ep, eIdx) => {
                 const epLi = document.createElement('li');
                 epLi.className = 'episode' + (eIdx === selectedEpisodeIndex ? ' active' : '');
-                epLi.textContent = `Épisode ${ep.num}`;
+                epLi.style.userSelect = 'none';
 
+                // Conteneur texte épisode
+                const epText = document.createElement('span');
+                epText.textContent = `Épisode ${ep.num}`;
+                epText.style.flexGrow = '1';
+                epLi.appendChild(epText);
+
+                // Bouton éditer épisode (changer numéro)
+                const editEpBtn = createEditButton();
+                epLi.appendChild(editEpBtn);
+
+                // Bouton supprimer épisode
                 const removeEpBtn = document.createElement('button');
                 removeEpBtn.className = 'remove-btn';
                 removeEpBtn.textContent = 'X';
                 removeEpBtn.title = "Supprimer cet épisode";
-                removeEpBtn.addEventListener('click', (ev) => {
-                  ev.stopPropagation();
+                epLi.appendChild(removeEpBtn);
+
+                // Click épisode sélection
+                epLi.addEventListener('click', (e) => {
+                  if (e.target === editEpBtn || e.target === removeEpBtn) return;
+                  selectedEpisodeIndex = eIdx;
+                  playEpisode(aIdx, sIdx, eIdx);
+                  renderAnimeList();
+                  updateFormsVisibility();
+                });
+
+                // Supprimer épisode
+                removeEpBtn.addEventListener('click', (e) => {
+                  e.stopPropagation();
                   if (confirm(`Supprimer l'épisode ${ep.num} ?`)) {
                     season.episodes.splice(eIdx, 1);
                     selectedEpisodeIndex = null;
@@ -365,13 +452,11 @@
                     updateFormsVisibility();
                   }
                 });
-                epLi.appendChild(removeEpBtn);
 
-                epLi.addEventListener('click', () => {
-                  selectedEpisodeIndex = eIdx;
-                  playEpisode(aIdx, sIdx, eIdx);
-                  renderAnimeList();
-                  updateFormsVisibility();
+                // Renommer épisode (changer numéro)
+                editEpBtn.addEventListener('click', (e) => {
+                  e.stopPropagation();
+                  startEditing(epLi, epText, 'episode', aIdx, sIdx, eIdx);
                 });
 
                 episodesUl.appendChild(epLi);
@@ -390,11 +475,112 @@
     });
   }
 
+  // Fonction pour lancer l'édition inline
+  // parentEl = li de l'élément
+  // textContainer = span contenant le texte à éditer
+  // type = 'anime' | 'season' | 'episode'
+  // indices selon le type
+  function startEditing(parentEl, textContainer, type, aIdx, sIdx, eIdx) {
+    const oldValue = textContainer.textContent;
+    let input = document.createElement('input');
+    input.type = 'text';
+    input.value = oldValue;
+
+    // Pour saison et épisode, on va extraire le numéro pour modifier
+    if (type === 'season') {
+      const match = oldValue.match(/\d+/);
+      input.value = match ? match[0] : '';
+      input.type = 'number';
+      input.min = 1;
+    } else if (type === 'episode') {
+      const match = oldValue.match(/\d+/);
+      input.value = match ? match[0] : '';
+      input.type = 'number';
+      input.min = 1;
+    }
+
+    // Remplacer le texte par input
+    parentEl.replaceChild(input, textContainer);
+    input.focus();
+    input.select();
+
+    // Gérer validation et annulation
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        finishEditing();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        cancelEditing();
+      }
+    });
+
+    input.addEventListener('blur', () => {
+      finishEditing();
+    });
+
+    function finishEditing() {
+      const newValueRaw = input.value.trim();
+      if (newValueRaw === '') {
+        alert("La valeur ne peut pas être vide");
+        input.focus();
+        return;
+      }
+
+      if (type === 'anime') {
+        animes[aIdx].title = newValueRaw;
+      } else if (type === 'season') {
+        const newNum = parseInt(newValueRaw);
+        if (isNaN(newNum) || newNum < 1) {
+          alert("Numéro de saison invalide");
+          input.focus();
+          return;
+        }
+        // Vérifier si déjà une saison avec ce numéro
+        if (animes[aIdx].seasons.some((s, idx) => s.seasonNum === newNum && idx !== sIdx)) {
+          alert("Une autre saison avec ce numéro existe déjà");
+          input.focus();
+          return;
+        }
+        animes[aIdx].seasons[sIdx].seasonNum = newNum;
+        // Si cette saison est sélectionnée, mettre à jour le titre
+        if (selectedAnimeIndex === aIdx && selectedSeasonIndex === sIdx) {
+          animeTitleEl.textContent = `${animes[aIdx].title} — Saison ${newNum}`;
+        }
+      } else if (type === 'episode') {
+        const newNum = parseInt(newValueRaw);
+        if (isNaN(newNum) || newNum < 1) {
+          alert("Numéro d'épisode invalide");
+          input.focus();
+          return;
+        }
+        const episodes = animes[aIdx].seasons[sIdx].episodes;
+        if (episodes.some((ep, idx) => ep.num === newNum && idx !== eIdx)) {
+          alert("Un autre épisode avec ce numéro existe déjà");
+          input.focus();
+          return;
+        }
+        episodes[eIdx].num = newNum;
+        // Si cet épisode est sélectionné, mettre à jour le titre
+        if (selectedAnimeIndex === aIdx && selectedSeasonIndex === sIdx && selectedEpisodeIndex === eIdx) {
+          animeTitleEl.textContent = `${animes[aIdx].title} — Saison ${animes[aIdx].seasons[sIdx].seasonNum} — Épisode ${newNum}`;
+        }
+      }
+
+      saveData();
+      renderAnimeList();
+    }
+
+    function cancelEditing() {
+      parentEl.replaceChild(textContainer, input);
+    }
+  }
+
   function renderEpisodes(aIdx, sIdx) {
     episodeListEl.innerHTML = '';
     const season = animes[aIdx].seasons[sIdx];
     if (!season || season.episodes.length === 0) {
-      animeTitleEl.textContent += ' — Aucun épisode';
+      animeTitleEl.textContent = `${animes[aIdx].title} — Saison ${season ? season.seasonNum : ''} — Aucun épisode`;
       return;
     }
 
@@ -447,7 +633,6 @@
     const seasonNum = parseInt(document.getElementById('seasonNumInput').value);
     if (isNaN(seasonNum) || seasonNum < 1) return alert("Numéro de saison invalide");
     const anime = animes[selectedAnimeIndex];
-    // Vérifie si saison existe déjà
     if (anime.seasons.find(s => s.seasonNum === seasonNum)) {
       return alert("Cette saison existe déjà");
     }
@@ -478,7 +663,6 @@
   loadData();
   renderAnimeList();
   updateFormsVisibility();
-
 </script>
 
 </body>
