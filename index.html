@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WeStream_Anime</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #121212;
+      color: #eee;
+      margin: 0;
+      display: flex;
+      height: 100vh;
+      flex-direction: row;
+    }
+
+    nav {
+      width: 300px;
+      background: #1f1f1f;
+      padding: 20px;
+      overflow-y: auto;
+      border-right: 2px solid #333;
+    }
+
+    nav h2 {
+      margin-top: 0;
+      font-size: 1.6rem;
+      margin-bottom: 15px;
+      border-bottom: 1px solid #444;
+      padding-bottom: 5px;
+    }
+
+    ul {
+      list-style: none;
+      padding-left: 0;
+      margin: 0 0 20px 0;
+    }
+
+    li.anime, li.season {
+      cursor: pointer;
+      padding: 8px 12px;
+      border-radius: 6px;
+      user-select: none;
+      margin-bottom: 6px;
+      background-color: #292929;
+      transition: background-color 0.2s;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    li.anime:hover, li.season:hover {
+      background-color: #3a3a3a;
+    }
+
+    li.anime.active, li.season.active {
+      background-color: #4a90e2;
+      color: white;
+      font-weight: bold;
+    }
+
+    li.season {
+      margin-left: 18px;
+    }
+
+    li.episode {
+      margin-left: 36px;
+      padding: 6px 12px;
+      background: #333;
+      border-radius: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.9rem;
+    }
+
+    li.episode:hover {
+      background: #444;
+    }
+
+    button.remove-btn {
+      background: #e74c3c;
+      border: none;
+      color: white;
+      padding: 3px 8px;
+      font-size: 0.9rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button.remove-btn:hover {
+      background: #c0392b;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 30px 40px;
+      background: #181818;
+    }
+
+    #animeTitle {
+      font-size: 2rem;
+      margin-bottom: 15px;
+    }
+
+    #episodeList {
+      margin-bottom: 25px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    button.episode-btn {
+      padding: 10px 18px;
+      border: none;
+      border-radius: 6px;
+      background: #292929;
+      color: #eee;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background-color 0.25s;
+    }
+
+    button.episode-btn:hover {
+      background: #444;
+    }
+
+    button.episode-btn.active {
+      background: #4a90e2;
+      color: white;
+      font-weight: bold;
+    }
+
+    video {
+      width: 100%;
+      max-height: 70vh;
+      background: black;
+      border-radius: 8px;
+      outline: none;
+    }
+
+    form {
+      margin-bottom: 20px;
+      background: #292929;
+      padding: 15px 20px;
+      border-radius: 8px;
+    }
+
+    form > label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: bold;
+    }
+
+    form input[type="text"],
+    form input[type="url"],
+    form input[type="number"] {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 12px;
+      border-radius: 5px;
+      border: none;
+      font-size: 1rem;
+    }
+
+    form button {
+      padding: 8px 15px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background: #4a90e2;
+      color: white;
+      transition: background-color 0.3s;
+    }
+
+    form button:hover {
+      background: #357abd;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        flex-direction: column;
+      }
+      nav {
+        width: 100%;
+        border-right: none;
+        border-bottom: 2px solid #333;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <h2>Gestion des Animes</h2>
+  <ul id="animeList"></ul>
+
+  <form id="addAnimeForm">
+    <h3>Ajouter un Anime</h3>
+    <label for="animeTitleInput">Titre Anime</label>
+    <input type="text" id="animeTitleInput" required placeholder="Titre de l'anime" />
+    <button type="submit">Ajouter Anime</button>
+  </form>
+
+  <form id="addSeasonForm" style="display:none;">
+    <h3>Ajouter une Saison</h3>
+    <label for="seasonNumInput">Numéro Saison</label>
+    <input type="number" id="seasonNumInput" min="1" required />
+    <button type="submit">Ajouter Saison</button>
+  </form>
+
+  <form id="addEpisodeForm" style="display:none;">
+    <h3>Ajouter un Épisode</h3>
+    <label for="episodeNumInput">Numéro Épisode</label>
+    <input type="number" id="episodeNumInput" min="1" required />
+    <label for="episodeUrlInput">URL vidéo (MP4)</label>
+    <input type="url" id="episodeUrlInput" required placeholder="https://..." />
+    <button type="submit">Ajouter Épisode</button>
+  </form>
+</nav>
+
+<main>
+  <h1 id="animeTitle">Sélectionne un anime, une saison et un épisode</h1>
+  <div id="episodeList"></div>
+  <video id="videoPlayer" controls>
+    <source src="" type="video/mp4" />
+    Ton navigateur ne supporte pas la lecture vidéo.
+  </video>
+</main>
+
+<script>
+  let animes = [];
+  let selectedAnimeIndex = null;
+  let selectedSeasonIndex = null;
+  let selectedEpisodeIndex = null;
+
+  const animeListEl = document.getElementById('animeList');
+  const animeTitleEl = document.getElementById('animeTitle');
+  const episodeListEl = document.getElementById('episodeList');
+  const videoPlayer = document.getElementById('videoPlayer');
+
+  const addAnimeForm = document.getElementById('addAnimeForm');
+  const addSeasonForm = document.getElementById('addSeasonForm');
+  const addEpisodeForm = document.getElementById('addEpisodeForm');
+
+  function saveData() {
+    localStorage.setItem('animesData', JSON.stringify(animes));
+  }
+
+  function loadData() {
+    const data = localStorage.getItem('animesData');
+    if (data) animes = JSON.parse(data);
+  }
+
+  function renderAnimeList() {
+    animeListEl.innerHTML = '';
+    animes.forEach((anime, aIdx) => {
+      const animeLi = document.createElement('li');
+      animeLi.className = 'anime' + (aIdx === selectedAnimeIndex ? ' active' : '');
+      animeLi.textContent = anime.title;
+
+      const removeAnimeBtn = document.createElement('button');
+      removeAnimeBtn.className = 'remove-btn';
+      removeAnimeBtn.textContent = 'X';
+      removeAnimeBtn.title = "Supprimer cet anime";
+      removeAnimeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (confirm(`Supprimer "${anime.title}" ?`)) {
+          animes.splice(aIdx, 1);
+          selectedAnimeIndex = null;
+          selectedSeasonIndex = null;
+          selectedEpisodeIndex = null;
+          saveData();
+          clearPlayerAndTitles();
+          renderAnimeList();
+          updateFormsVisibility();
+        }
+      });
+      animeLi.appendChild(removeAnimeBtn);
+
+      animeLi.addEventListener('click', () => {
+        selectedAnimeIndex = aIdx;
+        selectedSeasonIndex = null;
+        selectedEpisodeIndex = null;
+        animeTitleEl.textContent = `Anime: ${anime.title} — Sélectionne une saison`;
+        episodeListEl.innerHTML = '';
+        videoPlayer.src = '';
+        renderAnimeList();
+        updateFormsVisibility();
+      });
+
+      if (anime.seasons.length > 0) {
+        const seasonsUl = document.createElement('ul');
+        anime.seasons.forEach((season, sIdx) => {
+          const seasonLi = document.createElement('li');
+          seasonLi.className = 'season' + (aIdx === selectedAnimeIndex && sIdx === selectedSeasonIndex ? ' active' : '');
+          seasonLi.textContent = "Saison " + season.seasonNum;
+
+          const removeSeasonBtn = document.createElement('button');
+          removeSeasonBtn.className = 'remove-btn';
+          removeSeasonBtn.textContent = 'X';
+          removeSeasonBtn.title = "Supprimer cette saison";
+          removeSeasonBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm(`Supprimer la saison ${season.seasonNum} ?`)) {
+              anime.seasons.splice(sIdx, 1);
+              selectedSeasonIndex = null;
+              selectedEpisodeIndex = null;
+              saveData();
+              clearPlayerAndTitles();
+              renderAnimeList();
+              updateFormsVisibility();
+            }
+          });
+          seasonLi.appendChild(removeSeasonBtn);
+
+          seasonLi.addEventListener('click', () => {
+            selectedAnimeIndex = aIdx;
+            selectedSeasonIndex = sIdx;
+            selectedEpisodeIndex = null;
+            animeTitleEl.textContent = `${anime.title} — Saison ${season.seasonNum}`;
+            renderEpisodes(aIdx, sIdx);
+            videoPlayer.src = '';
+            renderAnimeList();
+            updateFormsVisibility();
+          });
+
+          // Affiche la liste des épisodes sous la saison sélectionnée
+          if (selectedAnimeIndex === aIdx && selectedSeasonIndex === sIdx) {
+            if (season.episodes.length > 0) {
+              const episodesUl = document.createElement('ul');
+              season.episodes.forEach((ep, eIdx) => {
+                const epLi = document.createElement('li');
+                epLi.className = 'episode' + (eIdx === selectedEpisodeIndex ? ' active' : '');
+                epLi.textContent = `Épisode ${ep.num}`;
+
+                const removeEpBtn = document.createElement('button');
+                removeEpBtn.className = 'remove-btn';
+                removeEpBtn.textContent = 'X';
+                removeEpBtn.title = "Supprimer cet épisode";
+                removeEpBtn.addEventListener('click', (e) => {
+                  e.stopPropagation();
+                  if (confirm(`Supprimer l'épisode ${ep.num} ?`)) {
+                    season.episodes.splice(eIdx, 1);
+                    selectedEpisodeIndex = null;
+                    videoPlayer.src = '';
+                    animeTitleEl.textContent = `${anime.title} — Saison ${season.seasonNum}`;
+                    saveData();
+                    renderAnimeList();
+                    updateFormsVisibility();
+                  }
+                });
+                epLi.appendChild(removeEpBtn);
+
+                epLi.addEventListener('click', () => {
+                  selectedEpisodeIndex = eIdx;
+                  playEpisode(aIdx, sIdx, eIdx);
+                  renderAnimeList();
+                  updateFormsVisibility();
+                });
+
+                episodesUl.appendChild(epLi);
+              });
+              seasonLi.appendChild(episodesUl);
+            }
+          }
+
+          seasonsUl.appendChild(seasonLi);
+        });
+        animeLi.appendChild(seasonsUl);
+      }
+
+      animeListEl.appendChild(animeLi);
+    });
+  }
+
+  function renderEpisodes(aIdx, sIdx) {
+    episodeListEl.innerHTML = '';
+    const episodes = animes[aIdx].seasons[sIdx].episodes;
+    if (episodes.length === 0) {
+      episodeListEl.textContent = 'Aucun épisode dans cette saison.';
+      return;
+    }
+    episodes.forEach((ep, eIdx) => {
+      const btn = document.createElement('button');
+      btn.className = 'episode-btn' + (eIdx === selectedEpisodeIndex ? ' active' : '');
+      btn.textContent = `Épisode ${ep.num}`;
+      btn.addEventListener('click', () => {
+        selectedEpisodeIndex = eIdx;
+        playEpisode(aIdx, sIdx, eIdx);
+        renderAnimeList();
+        updateFormsVisibility();
+      });
+      episodeListEl.appendChild(btn);
+    });
+  }
+
+  function playEpisode(aIdx, sIdx, eIdx) {
+    const ep = animes[aIdx].seasons[sIdx].episodes[eIdx];
+    videoPlayer.src = ep.url;
+    videoPlayer.load();
+    videoPlayer.play();
+    animeTitleEl.textContent = `${animes[aIdx].title} — Saison ${animes[aIdx].seasons[sIdx].seasonNum} — Épisode ${ep.num}`;
+  }
+
+  function clearPlayerAndTitles() {
+    animeTitleEl.textContent = 'Sélectionne un anime, une saison et un épisode';
+    episodeListEl.innerHTML = '';
+    videoPlayer.src = '';
+  }
+
+  function updateFormsVisibility() {
+    addSeasonForm.style.display = selectedAnimeIndex !== null ? 'block' : 'none';
+    addEpisodeForm.style.display = (selectedAnimeIndex !== null && selectedSeasonIndex !== null) ? 'block' : 'none';
+  }
+
+  addAnimeForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const title = document.getElementById('animeTitleInput').value.trim();
+    if (!title) return alert('Titre anime requis');
+    animes.push({ title, seasons: [] });
+    addAnimeForm.reset();
+    saveData();
+    renderAnimeList();
+    updateFormsVisibility();
+  });
+
+  addSeasonForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const num = parseInt(document.getElementById('seasonNumInput').value);
+    if (!num || num < 1) return alert('Numéro saison invalide');
+    // Vérifie si la saison existe déjà pour cet anime
+    const seasons = animes[selectedAnimeIndex].seasons;
+    if (seasons.some(s => s.seasonNum === num)) {
+      return alert(`La saison ${num} existe déjà.`);
+    }
+    animes[selectedAnimeIndex].seasons.push({ seasonNum: num, episodes: [] });
+    addSeasonForm.reset();
+    saveData();
+    renderAnimeList();
+    updateFormsVisibility();
+  });
+
+  addEpisodeForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const num = parseInt(document.getElementById('episodeNumInput').value);
+    const url = document.getElementById('episodeUrlInput').value.trim();
+    if (!num || num < 1) return alert('Numéro épisode invalide');
+    if (!url.endsWith('.mp4')) return alert('URL MP4 invalide');
+    // Vérifie si l'épisode existe déjà dans la saison
+    const episodes = animes[selectedAnimeIndex].seasons[selectedSeasonIndex].episodes;
+    if (episodes.some(ep => ep.num === num)) {
+      return alert(`L'épisode ${num} existe déjà.`);
+    }
+    animes[selectedAnimeIndex].seasons[selectedSeasonIndex].episodes.push({ num, url });
+    addEpisodeForm.reset();
+    saveData();
+    renderEpisodes(selectedAnimeIndex, selectedSeasonIndex);
+    renderAnimeList();
+    updateFormsVisibility();
+  });
+
+  loadData();
+  renderAnimeList();
+  updateFormsVisibility();
+</script>
+
+</body>
+</html>
+
